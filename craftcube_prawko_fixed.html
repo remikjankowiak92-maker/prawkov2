@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Craft Cube — PRAWKO Panel (v2) — statystyki helperów</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{
+  --bg:#07080b; --panel:#0e1117; --muted:#9aa0ac; --accent-purple:#7c5cff; --accent-green:#19e0a3;
+  --card-radius:12px; --sidebar-width:260px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#e6eef8;background:linear-gradient(180deg,#06060a,#07060a);-webkit-font-smoothing:antialiased}
+#mainMenu{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-width);padding:20px;overflow:auto;background:linear-gradient(180deg, rgba(124,92,255,0.03), rgba(0,0,0,0.35));border-right:1px solid rgba(255,255,255,0.02);box-shadow:10px 0 40px rgba(2,6,23,0.6);z-index:1000}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:18px;cursor:pointer}
+.logo-svg{width:140px;height:auto}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border-radius:10px;background:transparent;border:0;color:var(--muted);font-weight:600;margin-bottom:6px}
+.nav-btn:hover{background:linear-gradient(90deg, rgba(124,92,255,0.06), rgba(16,185,129,0.02));color:#fff;transform:translateX(4px)}
+.nav-btn.active{background:linear-gradient(90deg, rgba(124,92,255,0.12), rgba(16,185,129,0.03));color:#fff}
+.content-area{margin-left:calc(var(--sidebar-width) + 40px);padding:28px 36px;max-width:1200px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01));padding:18px;border-radius:var(--card-radius);border:1px solid rgba(255,255,255,0.02);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+h1,h2,h3{color:#e6eef8}
+label, p, .muted{color:var(--muted)}
+.input,textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:#0b1014;color:#eaf2ff}
+.btn{padding:8px 12px;border-radius:10px;border:0;cursor:pointer}
+.btn-primary{background:linear-gradient(90deg,var(--accent-purple),#6d4bff);color:#fff}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.02)}
+.segment{display:inline-flex;background:rgba(255,255,255,0.02);border-radius:10px;padding:4px}
+.segment button{background:transparent;border:0;padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
+.segment button.active{background:linear-gradient(90deg,var(--accent-purple),#6d4bff);color:#fff}
+.prawko-table{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:12px;align-items:start}
+.prawko-card{padding:14px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.015));border:1px solid rgba(255,255,255,0.02)}
+.prawko-item{display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+.prawko-item .text{flex:1}
+.prawko-item .controls{display:flex;gap:8px;align-items:center}
+.note-input{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.02);background:#0b1014;color:#eaf2ff;min-width:160px}
+.small-muted{color:var(--muted);font-size:13px}
+.history-list{max-height:320px;overflow:auto;border-radius:8px;border:1px solid rgba(255,255,255,0.02);background:rgba(255,255,255,0.01);padding:8px}
+.wheel-canvas{width:360px;height:360px;border-radius:180px;background:conic-gradient(from 0deg, #7c5cff, #4fb3ff, #19e0a3, #ff9f49);display:block;margin:18px auto}
+.wheel-container{display:flex;flex-direction:column;align-items:center;gap:8px}
+.wheel-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:12px}
+@media (max-width:1000px){.content-area{margin-left:0;padding:16px}.prawko-table{grid-template-columns:1fr}}
+/* small util */
+.hidden{display:none}
+.sep{height:1px;background:rgba(255,255,255,0.02);margin:12px 0;border-radius:4px}
+
+.status-btn{ background:#1f1f1f;border:1px solid #2b2b2b;padding:8px 18px;border-radius:12px;font-weight:600;color:#ddd;cursor:pointer;transition:0.15s;}
+.status-btn.active{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.4);color:#000;}
+.status-btn.active[data-val="wykonal"]{background:#1fe6a8;border-color:#00c98a;}
+.status-btn.active[data-val="nieWykonal"]{background:#ff6b6b;border-color:#e64444;}
+
+.helper-list-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.01)}
+.helper-list-item .left{display:flex;gap:8px;align-items:center}
+.helper-pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-weight:700}
+.report-card{padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);margin-bottom:6px;white-space:pre-wrap}
+
+.table{width:100%;border-collapse:collapse}
+.table th, .table td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left}
+.table th{font-weight:700;color:#bfc8d6}
+.table tr:hover td{background:rgba(255,255,255,0.01)}
+.clickable{cursor:pointer}
+</style>
+</head>
+<body>
+
+<aside id="mainMenu">
+  <div class="logo" onclick="showSection('dashboard')">
+    <svg class="logo-svg" viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet">
+      <defs>
+        <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#ffb64d"/><stop offset="1" stop-color="#ff7a00"/></linearGradient>
+        <linearGradient id="g2" x1="0" x2="1"><stop offset="0" stop-color="#ffd86b"/><stop offset="1" stop-color="#ffb64d"/></linearGradient>
+      </defs>
+      <rect x="12" y="10" width="90" height="90" rx="10" fill="url(#g1)" stroke="#7a4b00" stroke-width="2" />
+      <rect x="18" y="18" width="74" height="74" rx="8" fill="url(#g2)" opacity="0.95"/>
+      <text x="110" y="42" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="28" fill="#fff">CRAFT <tspan fill="#7c5cff">CUBE</tspan></text>
+      <text id="logoText" x="110" y="82" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="32" fill="#fff">PRAWKO</text>
+    </svg>
+  </div>
+
+  <nav>
+    <button class="nav-btn active" id="nav-dashboard" onclick="showSection('dashboard')">Dashboard</button>
+    <button class="nav-btn" id="nav-generator" onclick="showSection('generator')">Generator Komend</button>
+    <button class="nav-btn" id="nav-wheel" onclick="showSection('wheel')">Losowanie awansów</button>
+    <button class="nav-btn" id="nav-prawko" onclick="showSection('prawkoTable')">Tabela Prawka</button>
+    <button class="nav-btn" id="nav-reports" onclick="showSection('reports')">Raporty</button>
+    <button class="nav-btn" id="nav-history" onclick="showSection('history')">Historia Komend</button>
+    <button class="nav-btn" id="nav-helperStats" onclick="showSection('helperStats')">Statystyki Helperów</button>
+  </nav>
+</aside>
+
+<main class="content-area">
+  <!-- Dashboard -->
+  <section id="dashboard" class="card">
+    <h1 style="font-size:24px;margin-bottom:10px;">Strona główna</h1>
+    <p class="small-muted" style="margin-bottom:12px;">Najważniejsze informacje i stała tabela helperów po prawej stronie.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start">
+
+      <!-- left: global stats table -->
+      <div>
+        <table class="card table">
+          <thead>
+            <tr>
+              <th>Statystyka</th>
+              <th>Wartość</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Wykonane sprawdzania</td><td id="stat-checks">0</td></tr>
+            <tr><td>Perfekcyjne sprawdzania</td><td id="stat-perfect">0</td></tr>
+            <tr><td>Średnia liczba błędów</td><td id="stat-errors">0</td></tr>
+            <tr><td>Łączna liczba helperów (z zapisanych prób)</td><td id="stat-helpers-count">0</td></tr>
+          </tbody>
+        </table>
+
+        <div style="height:12px"></div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0">Szybkie akcje</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="showSection('generator')">Generator</button>
+            <button class="btn btn-ghost" onclick="showSection('prawkoTable')">Tabela błędów</button>
+            <button class="btn btn-ghost" onclick="showSection('reports')">Raporty</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- right: helper table (always visible) -->
+      <div>
+        <div class="card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong>Lista helperów</strong>
+            <div class="small-muted" style="font-size:12px">Kliknij nick, aby otworzyć szczegóły</div>
+          </div>
+          <div><button class="btn btn-ghost" onclick="renderHelpersTable()">Odśwież</button></div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:auto;max-height:520px">
+          <table class="table" id="helpersTable" style="min-width:420px">
+            <thead>
+              <tr>
+                <th>Helper</th>
+                <th>Podejścia</th>
+                <th>Oblane</th>
+                <th>Skuteczność</th>
+                <th>Ostatni wynik</th>
+              </tr>
+            </thead>
+            <tbody id="helpersTableBody">
+              <tr><td colspan="5" class="small-muted">Brak danych — brak zapisanych prób</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="card" style="margin-top:8px;padding:12px">
+      <h3 style="margin:0 0 6px 0">Szybkie statystyki helpera (podgląd)</h3>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <input id="dashboard-helper-nick" class="input" placeholder="Wpisz nick helpera..." style="max-width:260px">
+        <button class="btn btn-primary" onclick="loadHelperFromInput()">Pokaż</button>
+        <button class="btn btn-ghost" onclick="clearHelperStatsDisplay()">Wyczyść</button>
+      </div>
+      <div id="helperStatsDisplay" style="margin-top:12px;display:none">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="card" style="padding:12px;min-width:160px">
+            <div class="small-muted">Helper</div>
+            <div id="h-name" style="font-weight:700;margin-top:6px">-</div>
+          </div>
+          <div class="card" style="padding:12px;min-width:140px">
+            <div class="small-muted">Podejścia</div>
+            <div id="h-approach" style="font-weight:700;margin-top:6px">-</div>
+          </div>
+          <div class="card" style="padding:12px;min-width:140px">
+            <div class="small-muted">Oblane (łącznie)</div>
+            <div id="h-fails" style="font-weight:700;margin-top:6px">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Generator Komend -->
+  <section id="generator" class="card hidden" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h2 style="margin:0">TempBan / Mute Generator</h2>
+        <p class="small-muted" style="margin-top:6px">Wybierz typ, powód i czas — system ustawi domyślny czas lub wybierz własny.</p>
+      </div>
+      <div>
+        <div class="segment" role="tablist" aria-label="type">
+          <button id="type-ban" class="active" onclick="setType('ban')">Ban</button>
+          <button id="type-mute" onclick="setType('mute')">Mute</button>
+          <button id="type-ipban" onclick="setType('ipban')">IPBan</button>
+          <button id="type-ipmute" onclick="setType('ipmute')">IPMute</button>
+          <button id="type-kick" onclick="setType('kick')">Kick</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <form id="commandForm" onsubmit="event.preventDefault();generateCommand()">
+      <div style="display:grid;grid-template-columns:1fr 220px;gap:12px">
+        <div>
+          <label>Nick</label>
+          <input id="gen-nick" class="input" placeholder="Wpisz nick...">
+        </div>
+        <div>
+          <label>Dodaj do historii</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <input type="checkbox" id="addToHistory" checked><label for="addToHistory" class="small-muted" style="margin:0">Tak</label>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <label style="margin-right:8px">Powody (wybierz):</label>
+        <select id="predefinedReasons" class="input" style="max-width:420px"></select>
+        <button type="button" class="btn btn-ghost" onclick="openCustomReason()">Dodaj własny powód</button>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label style="min-width:70px">Czas:</label>
+        <div id="durationPresets" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <div id="selectedDuration" class="small-muted" style="margin-left:8px">Wybrany czas: <span id="selectedDurationValue">brak</span></div>
+        <button type="button" class="btn btn-ghost" onclick="openCustomDuration()">Własny czas</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>Powód (można edytować)</label>
+        <input id="gen-reason" class="input" placeholder="Powód...">
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
+        <input type="checkbox" id="gen-pancake"><label for="gen-pancake" class="small-muted">Dodaj // 123_pancake_123</label>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:12px">
+        <button class="btn btn-primary" type="submit">Wygeneruj komendę</button>
+        <button type="button" class="btn btn-ghost" onclick="copyGenerated()">Kopiuj</button>
+        <button type="button" class="btn btn-ghost" onclick="clearGenerator()">Wyczyść</button>
+      </div>
+    </form>
+
+    <div id="generatedBox" class="card hidden" style="margin-top:12px">
+      <div><strong>Wygenerowana komenda</strong></div>
+      <pre id="generatedText" style="margin-top:8px;color:var(--accent-green);font-family:monospace;white-space:pre-wrap"></pre>
+    </div>
+  </section>
+
+  <!-- Wheel -->
+  <section id="wheel" class="card hidden" style="margin-top:16px">
+    <h2>Losowanie awansów — Koło z animacją</h2>
+    <p class="small-muted">Dodaj koła, opcje, wpisz gracza i losuj. Koła można usuwać.</p>
+
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <input id="wheel-name" class="input" placeholder="Nazwa koła (np. Awans VIP)" style="max-width:320px">
+      <button class="btn btn-ghost" onclick="createWheel()">Utwórz koło</button>
+    </div>
+
+    <div id="wheel-controls" style="margin-top:12px"></div>
+    <div class="wheel-list" id="wheelList"></div>
+  </section>
+
+  <!-- Prawko Table -->
+  <section id="prawkoTable" class="card hidden" style="margin-top:16px">
+    <h2>Tabela Prawka</h2>
+    <p class="small-muted">Błędy krytyczne po lewej, zwykłe po prawej. Wybierz status, dodaj notatkę — notatka nie rozbije layoutu.</p>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <div class="small-muted">Szybkie akcje:</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="markAll('wykonal')">Wykonane</button>
+        <button class="btn btn-ghost" onclick="markAll('nieWykonal')">Niewykonane</button>
+        <button class="btn btn-ghost" onclick="resetAll()">Resetuj</button>
+      </div>
+    </div>
+
+    <div class="prawko-table" style="margin-top:12px">
+      <div class="prawko-card">
+        <h3>BŁĘDY KRYTYCZNE</h3>
+        <div id="criticalErrorsList"></div>
+      </div>
+      <div class="prawko-card">
+        <h3>BŁĘDY</h3>
+        <div id="regularErrorsList"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="savePrawko()">Zachowaj tabelę</button>
+      <button class="btn btn-primary" onclick="generateFromTable()">Wygeneruj raport</button>
+    </div>
+
+    <div id="savedTables" style="margin-top:12px"></div>
+  </section>
+
+  <!-- Reports -->
+  <section id="reports" class="card hidden" style="margin-top:16px">
+    <h2>Raporty</h2>
+    <p class="small-muted">Tutaj zapisują się wszystkie wygenerowane raporty — możesz je przeglądać, kopiować i usuwać.</p>
+    <div id="reportsList" style="margin-top:12px"></div>
+  </section>
+
+  <!-- History -->
+  <section id="history" class="card hidden" style="margin-top:16px">
+    <h2>Historia Komend</h2>
+    <div id="historyList" class="history-list"></div>
+    <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-ghost" onclick="clearHistory()">Wyczyść historię</button></div>
+  </section>
+
+  <!-- Helper Stats (full panel) -->
+  <section id="helperStats" class="card hidden" style="margin-top:16px">
+    <h2>Statystyki Helperów</h2>
+    <p class="small-muted">Lista helperów (z zapisanych podejść). Kliknij nick, aby zobaczyć pełny profil i raporty.</p>
+
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="flex:1;max-width:380px">
+        <div class="card" style="padding:12px">
+          <input id="helperSearch" class="input" placeholder="Filtruj po nicku..." oninput="renderHelperList()">
+        </div>
+        <div id="helperList" style="margin-top:12px"></div>
+      </div>
+
+      <div style="flex:2">
+        <div id="singleHelperStats" class="card hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h3 id="sh-name" style="margin:0"></h3>
+              <div id="sh-meta" class="small-muted" style="margin-top:6px"></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-ghost" onclick="goBackToHelperList()">Powrót</button>
+              <button class="btn btn-primary" id="exportHelperCSV" onclick="exportHelperReportsCSV()">Eksport CSV</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div class="card"><div class="small-muted">Łączne podejścia</div><div id="sh-total" style="font-weight:700;margin-top:6px">0</div></div>
+            <div class="card"><div class="small-muted">Łączne oblane</div><div id="sh-fails" style="font-weight:700;margin-top:6px">0</div></div>
+            <div class="card"><div class="small-muted">Skuteczność</div><div id="sh-rate" style="font-weight:700;margin-top:6px">0%</div></div>
+          </div>
+
+          <div style="margin-top:12px">
+            <h4 style="margin:0 0 8px 0">Ostatnie 5 wyników</h4>
+            <div id="sh-last5"></div>
+          </div>
+
+          <div style="margin-top:12px">
+            <h4 style="margin:0 0 8px 0">Raporty</h4>
+            <div id="sh-reportsList" style="max-height:340px;overflow:auto"></div>
+          </div>
+        </div>
+
+        <div id="helperEmpty" class="card" style="display:none">
+          <div class="small-muted">Wybierz helpera z listy po lewej.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Custom Duration Modal -->
+<div id="customDurationModal" class="card hidden" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2000;min-width:320px">
+  <h3 style="margin:0 0 8px 0">Własny czas</h3>
+  <div style="display:flex;gap:8px;align-items:center">
+    <input id="customDurationValue" type="number" min="1" value="1" class="input" style="width:120px">
+    <select id="customDurationUnit" class="input" style="width:140px">
+      <option value="m">Minuty</option>
+      <option value="h">Godziny</option>
+      <option value="d" selected>Dni</option>
+      <option value="M">Miesiące</option>
+    </select>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-ghost" onclick="closeCustomDuration()">Anuluj</button>
+    <button class="btn btn-primary" onclick="saveCustomDuration()">Zapisz</button>
+  </div>
+</div>
+
+<!-- Custom Reason Modal -->
+<div id="customReasonModal" class="card hidden" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2000;min-width:360px">
+  <h3 style="margin:0 0 8px 0">Dodaj własny powód</h3>
+  <input id="customReasonInput" class="input" placeholder="Wpisz powód...">
+  <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-ghost" onclick="closeCustomReason()">Anuluj</button>
+    <button class="btn btn-primary" onclick="saveCustomReason()">Dodaj</button>
+  </div>
+</div>
+
+<script>
+// ----------------- App State -----------------
+let currentSection = 'dashboard';
+function showSection(id){
+  const sections = ['dashboard','generator','wheel','prawkoTable','reports','history','helperStats'];
+  sections.forEach(s=>{ const el=document.getElementById(s); if(el) el.classList.add('hidden'); const btn=document.getElementById('nav-'+s); if(btn) btn.classList.remove('active'); });
+  const show = document.getElementById(id);
+  if(show) show.classList.remove('hidden');
+  const navBtn = document.getElementById('nav-'+id);
+  if(navBtn) navBtn.classList.add('active');
+  currentSection = id;
+  if(id==='prawkoTable') renderPrawkoTable();
+  if(id==='reports') renderReports();
+  if(id==='history') renderHistory();
+  if(id==='wheel') renderWheelList();
+  if(id==='helperStats') { renderHelperList(); showHelperEmpty(); }
+}
+showSection('dashboard');
+
+// --------------- Predefined reasons and durations ---------------
+const predefined = [
+  { id:'obrazanie', name:'Obrażanie serwera, graczy i administracji', type:'mute', duration:'30m' },
+  { id:'spamHelpop', name:'Spam na helpop', type:'kick', duration:'5m' },
+  { id:'celoweSpam', name:'Celowe wywoływanie spamu', type:'mute', duration:'30m' },
+  { id:'podszywanieAdmin', name:'Podszywanie się pod administrację', type:'ban', duration:'7d' },
+  { id:'limitMultikont', name:'Przekroczenie limitu multikont', type:'ban', duration:'7d' },
+  { id:'nabijanieStatystyk', name:'Nabijanie statystyk na multikontach', type:'ban', duration:'3d' },
+  { id:'cheatySkrypty', name:'Korzystanie z cheatów, skryptów i niedozwolonych modyfikacji', type:'ban', duration:'7d' },
+  { id:'reklama', name:'Reklamowanie innych serwerów, stron i usług', type:'ban', duration:'30d' },
+  { id:'spamFloodKultura', name:'Spamowanie, floodowanie, brak kultury na czacie', type:'mute', duration:'15m' },
+  { id:'fakeMsg', name:'Fake msg', type:'mute', duration:'15m' },
+  { id:'bledyGry', name:'Wykorzystywanie błędów gry/serwera', type:'ban', duration:'1d' },
+  { id:'cheatyDetected', name:'Wykrycie cheatów', type:'ban', duration:'7d' },
+  { id:'przyznanie', name:'Przyznanie się do cheatów', type:'ipban', duration:'3d' },
+  { id:'brakWspolpracy', name:'Brak współpracy', type:'ipban', duration:'7d' },
+  { id:'opuszczenie', name:'Wylogowanie się podczas sprawdzania', type:'ipban', duration:'30d' },
+  { id:'kopiowaniePrzedmiotow', name:'Kopiowanie przedmiotów (duplikaty)', type:'ipban', duration:'365d' }
+];
+
+function initGeneratorUI(){
+  const sel = document.getElementById('predefinedReasons');
+  sel.innerHTML = '<option value="">-- wybierz powód --</option>' + predefined.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  const durEl = document.getElementById('durationPresets');
+  const presets = ['15m','30m','1h','5h','1d','3d','7d','30d','365d'];
+  durEl.innerHTML = presets.map(p=>`<button type="button" class="btn btn-ghost preset-btn" data-duration="${p}" onclick="setDuration('${p}')">${p}</button>`).join('');
+  document.getElementById('predefinedReasons').addEventListener('change',(e)=>{
+    const v = e.target.value;
+    const found = predefined.find(p=>p.id===v);
+    if(found){
+      setType(found.type);
+      document.getElementById('gen-reason').value = found.name;
+      setDuration(found.duration);
+    }
+  });
+}
+initGeneratorUI();
+
+let currentType = 'ban';
+function setType(t){
+  currentType = t;
+  document.querySelectorAll('.segment button').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('type-'+t);
+  if(btn) btn.classList.add('active');
+}
+function setDuration(val){
+  document.getElementById('durationPresets').querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('preset-active'));
+  const children = Array.from(document.getElementById('durationPresets').children);
+  children.forEach(ch=>{ if(ch.innerText===val) ch.classList.add('preset-active'); });
+  const existing = document.getElementById('gen-duration'); if(existing) existing.remove();
+  const inp = document.createElement('input'); inp.type='hidden'; inp.id='gen-duration'; inp.value=val; document.getElementById('commandForm').appendChild(inp);
+}
+function openCustomDuration(){ document.getElementById('customDurationModal').classList.remove('hidden'); }
+function closeCustomDuration(){ document.getElementById('customDurationModal').classList.add('hidden'); }
+function saveCustomDuration(){ const v = document.getElementById('customDurationValue').value; const u = document.getElementById('customDurationUnit').value; if(!v || v<1){ alert('Podaj poprawną wartość'); return; } const val = v + u; setDuration(val); closeCustomDuration(); }
+function openCustomReason(){ document.getElementById('customReasonModal').classList.remove('hidden'); }
+function closeCustomReason(){ document.getElementById('customReasonModal').classList.add('hidden'); }
+function saveCustomReason(){ const v = document.getElementById('customReasonInput').value.trim(); if(!v) return alert('Podaj powód'); const id = 'custom_'+Date.now(); predefined.push({id,name:v,type:currentType,duration:'1d'}); const sel = document.getElementById('predefinedReasons'); const opt = document.createElement('option'); opt.value=id; opt.text = v; sel.appendChild(opt); sel.value = id; document.getElementById('gen-reason').value = v; closeCustomReason(); }
+
+function generateCommand(){
+  const nick = document.getElementById('gen-nick').value.trim();
+  if(!nick) return alert('Podaj nick');
+  const reason = document.getElementById('gen-reason').value.trim() || 'brak powodu';
+  const durationInput = document.getElementById('gen-duration');
+  const duration = durationInput?durationInput.value:'1d';
+  const pancake = document.getElementById('gen-pancake').checked;
+  let cmd = '';
+  if(currentType==='kick'){ cmd = `/kick ${nick} ${reason}`; }
+  else {
+    let tp = currentType;
+    if(currentType==='ipban') tp = 'tempbanip';
+    if(currentType==='ipmute') tp = 'tempmuteip';
+    if(currentType==='ban') tp = 'tempban';
+    if(currentType==='mute') tp = 'tempmute';
+    cmd = `/${tp} ${nick} ${duration} ${reason}`;
+  }
+  if(pancake) cmd += ' // 123_pancake_123';
+  document.getElementById('generatedText').innerText = cmd;
+  document.getElementById('generatedBox').classList.remove('hidden');
+  if(document.getElementById('addToHistory').checked) addHistory(cmd,{type:currentType,nickname:nick,duration,duration});
+}
+function copyGenerated(){ const t = document.getElementById('generatedText').innerText; if(!t) return alert('Brak komendy'); navigator.clipboard.writeText(t).then(()=>alert('Skopiowano')); }
+function clearGenerator(){ document.getElementById('commandForm').reset(); document.getElementById('generatedBox').classList.add('hidden'); document.getElementById('gen-duration')?.remove(); }
+
+// ----------------- History -----------------
+const HISTORY_KEY = 'cc_v2_history';
+function addHistory(cmd,meta){ const h = JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'); h.unshift({cmd,meta,timestamp:Date.now()}); localStorage.setItem(HISTORY_KEY,JSON.stringify(h.slice(0,200))); renderHistory(); }
+function renderHistory(){ const list = document.getElementById('historyList'); const h = JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'); list.innerHTML=''; if(h.length===0){ list.innerHTML='<div class="small-muted">Brak historii</div>'; return; } h.forEach(item=>{ const row=document.createElement('div'); row.className='card'; row.style.marginBottom='8px'; row.innerHTML=`<div style="display:flex;justify-content:space-between"><div style="font-family:monospace">${item.cmd}</div><div class="small-muted">${new Date(item.timestamp).toLocaleString()}</div></div>`; row.onclick=()=>{ navigator.clipboard.writeText(item.cmd).then(()=>alert('Skopiowano z historii')); }; list.appendChild(row); }); }
+function clearHistory(){ if(confirm('Wyczyścić historię?')){ localStorage.removeItem(HISTORY_KEY); renderHistory(); } }
+
+// ----------------- Wheel -----------------
+let wheels = JSON.parse(localStorage.getItem('cc_v2_wheels')||'[]');
+function createWheel(){ const name = document.getElementById('wheel-name').value.trim() || ('Koło ' + (wheels.length+1)); const w = { id: 'w_'+Date.now(), name, options: [] }; wheels.push(w); localStorage.setItem('cc_v2_wheels',JSON.stringify(wheels)); document.getElementById('wheel-name').value=''; renderWheelList(); }
+function renderWheelList(){ const container = document.getElementById('wheelList'); container.innerHTML=''; wheels = JSON.parse(localStorage.getItem('cc_v2_wheels')||'[]'); wheels.forEach(w=>{ const div = document.createElement('div'); div.className='card'; div.style.padding='12px'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><strong>${w.name}</strong><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="openAddOption('${w.id}')">Dodaj opcję</button><button class="btn btn-ghost" onclick="spinWheel('${w.id}')">Losuj</button><button class="btn btn-ghost" onclick="deleteWheel('${w.id}')">Usuń</button></div></div><div id="opts-${w.id}" style="margin-top:8px">${w.options.length? w.options.map(o=>`<div class="small-muted">• ${o}</div>`).join('') : '<div class="small-muted">Brak opcji</div>'}</div>`; container.appendChild(div); }); }
+function openAddOption(id){ const name = prompt('Wpisz opcję (np. nick gracza):'); if(!name) return; wheels = JSON.parse(localStorage.getItem('cc_v2_wheels')||'[]'); const idx = wheels.findIndex(x=>x.id===id); if(idx===-1) return alert('Brak koła'); wheels[idx].options.push(name); localStorage.setItem('cc_v2_wheels',JSON.stringify(wheels)); renderWheelList(); }
+function deleteWheel(id){ if(!confirm('Usuń koło?')) return; wheels = wheels.filter(w=>w.id!==id); localStorage.setItem('cc_v2_wheels',JSON.stringify(wheels)); renderWheelList(); }
+function spinWheel(id){
+  wheels = JSON.parse(localStorage.getItem('cc_v2_wheels')||'[]');
+  const w = wheels.find(x=>x.id===id);
+  if(!w || !w.options.length) return alert('Brak opcji w kole');
+  const modal = document.createElement('div'); modal.id='wheelModal'; modal.className='card'; modal.style.position='fixed'; modal.style.left='50%'; modal.style.top='50%'; modal.style.transform='translate(-50%,-50%)'; modal.style.zIndex=3000; modal.style.minWidth='420px';
+  modal.innerHTML = `<h3 style="margin:0 0 8px 0">${w.name} — Losowanie</h3><canvas id="wheelCanvas" width="360" height="360" style="display:block;margin:8px auto;border-radius:50%"></canvas><div style="display:flex;justify-content:center;gap:8px;margin-top:8px"><button class="btn btn-ghost" id="closeWheelBtn">Zamknij</button></div>`;
+  document.body.appendChild(modal);
+  const canvas = modal.querySelector('#wheelCanvas'); const ctx = canvas.getContext('2d');
+  const opts = w.options.slice(); const seg = 360 / opts.length;
+  function drawWheel(rotation){
+    const cx = canvas.width/2, cy = canvas.height/2, r = Math.min(cx,cy)-4;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    opts.forEach((opt,i)=>{
+      const start = (i*seg + rotation)*Math.PI/180;
+      const end = ((i+1)*seg + rotation)*Math.PI/180;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,start,end); ctx.closePath();
+      ctx.fillStyle = i%2===0? '#7c5cff' : '#4fb3ff'; ctx.fill();
+      ctx.save(); ctx.translate(cx,cy); const ang = (start+end)/2; ctx.rotate(ang); ctx.fillStyle = '#fff'; ctx.font = '14px Inter, Arial'; ctx.textAlign = 'right'; ctx.fillText(opts[i], r-10, 0); ctx.restore();
+    });
+    ctx.beginPath(); ctx.moveTo(cx,cy-r-6); ctx.lineTo(cx-8,cy-r+12); ctx.lineTo(cx+8,cy-r+12); ctx.closePath(); ctx.fillStyle='#fff'; ctx.fill();
+  }
+  let rotation = 0; const luckyIndex = Math.floor(Math.random()*opts.length); const targetAngle = -(luckyIndex*seg + seg/2);
+  const rounds = 6; const totalRotation = rounds*360 + targetAngle; const duration = 3500; const start = performance.now();
+  function animate(now){
+    const t = Math.min(1,(now-start)/duration); const eased = 1 - Math.pow(1-t,3); rotation = totalRotation * eased; drawWheel(rotation); if(t<1) requestAnimationFrame(animate); else { const result = opts[luckyIndex]; addHistory(`Losowanie ${w.name} -> ${result}`, {type:'wheel',wheel:w.name,result}); setTimeout(()=> alert('Wylosowano: '+result),100); }
+  }
+  requestAnimationFrame(animate);
+  modal.querySelector('#closeWheelBtn').onclick = ()=>{ modal.remove(); };
+}
+
+// ----------------- Prawko Table logic -----------------
+const criticalErrors = [
+  { id: 'logi', text: 'Niewejście w logi', reportText: 'Nie wszedł w logi' },
+  { id: 'system informer', text: 'Błędy w system informerze', reportText: 'Błędy w system informerze' },
+  { id: 'processHacker', text: 'Niewejście w System Informera', reportText: 'Nie wszedł w System Informera' },
+  { id: 'werdykt', text: 'Błędny werdykt', reportText: 'Podał błędny werdykt' },
+  { id: 'cheatDetection', text: 'Niewykrycie cheata', reportText: 'Nie wykrył cheata' },
+  { id: 'logPath', text: 'Nieznajomość ścieżki logów', reportText: 'Nie znał ścieżki logów' },
+  { id: 'latestRemoval', text: 'Nie usunięcie latestu', reportText: 'Nie usunął latestu' }
+];
+const regularErrors = [
+  { id: 'f3', text: 'F3', reportText: 'nie sprawdził F3' },
+  { id: 'f3b', text: 'F3+B', reportText: 'nie sprawdził F3+B' },
+  { id: 'chatBinds', text: 'Bindy na chat (.help/.gui etc)', reportText: 'nie wpisał bindów na chat (.help/.gui etc)' },
+  { id: 'onScreenKeyboard', text: 'Klawiatura ekranowa', reportText: 'nie sprawdził klawiatury ekranowej' },
+  { id: 'stats', text: 'Statystyki', reportText: 'nie sprawdził statystyk' },
+  { id: 'assignedKeys', text: 'Przypisane klawisze', reportText: 'nie sprawdził przypisanych klawiszy' },
+  { id: 'hiddenElements', text: 'Ukryte elementy', reportText: 'nie sprawdził ukrytych elementów' },
+  { id: 'wrapCase', text: 'Zawijaj wokół/ uwzględniaj wielką literę', reportText: 'nie sprawdził opcji (Zawijaj wokół/uwzględniaj wielką literę)' },
+  { id: 'passwordsInLogs', text: 'Wpisanie haseł w logi (wurst, meteor itd)', reportText: 'wpisał haseł w logi (wurst, meteor itd)' },
+  { id: 'mods', text: 'Mody', reportText: 'nie sprawdził modów' },
+  { id: 'recentDownloadedTrashJar', text: 'Recent/pobrane/kosz/.jar', reportText: 'nie sprawdził Recent/pobrane/kosz/.jar' },
+  { id: 'processHackerApp', text: 'Błędy w Process hackerze', reportText: 'nie sprawdził Process hackera' },
+  { id: 'antivirus', text: 'Antywirus', reportText: 'nie sprawdził antywirusa' },
+  { id: 'copiedStrings', text: 'Skopiowane stringi', reportText: 'nie sprawdził skopiowanych stringów' },
+  { id: 'systemInformer', text: 'Nie usunięcie System Informera', reportText: 'nie usunął System Informera' },
+  { id: 'recording', text: 'Nagrywanie', reportText: 'nie sprawdził nagrywania' }
+];
+
+function generateItem(e,type){
+  const id = e.id;
+  return `<div class="prawko-entry">
+    <div class="prawko-item">
+      <div class="text">${e.text}</div>
+      <div class="controls">
+        <button type="button" class="status-btn success" data-id="${id}" data-val="wykonal">Wykonał</button>
+        <button type="button" class="status-btn danger" data-id="${id}" data-val="nieWykonal">Niewykonał</button>
+        <button type="button" class="btn btn-ghost" onclick="toggleNote('${id}')">Notatka</button>
+      </div>
+    </div>
+    <div class="note-row" id="note-row-${id}" style="display:none;margin-top:6px"><input id="note-${id}" class="note-input" placeholder="Notatka"></div>
+  </div>`;
+}
+function renderPrawkoTable(){
+  const c = document.getElementById('criticalErrorsList'), r = document.getElementById('regularErrorsList');
+  c.innerHTML = ''; r.innerHTML = '';
+  criticalErrors.forEach(e=> c.insertAdjacentHTML('beforeend', generateItem(e,'critical')));
+  regularErrors.forEach(e=> r.insertAdjacentHTML('beforeend', generateItem(e,'regular')));
+  attachPrawkoListeners();
+}
+function attachPrawkoListeners(){
+  document.querySelectorAll('.status-btn').forEach(btn=>{
+    btn.onclick = function(){
+      const id = this.dataset.id;
+      document.querySelectorAll(`.status-btn[data-id="${id}"]`).forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      const noteRow = document.getElementById('note-row-'+id);
+      if(noteRow) noteRow.style.display = 'block';
+    };
+  });
+}
+function toggleNote(id){ const row = document.getElementById('note-row-'+id); if(!row) return; row.style.display = row.style.display === 'none' ? 'block' : 'none'; }
+function markAll(status){ document.querySelectorAll('.status-btn').forEach(b=>{ const id = b.dataset.id; if(b.dataset.val === status){ b.classList.add('active'); const noteRow = document.getElementById('note-row-'+id); if(noteRow) noteRow.style.display='block'; } else b.classList.remove('active'); }); }
+function resetAll(){ document.querySelectorAll('.status-btn').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.note-row').forEach(n=>{ n.style.display='none'; n.querySelector('input') && (n.querySelector('input').value=''); }); }
+
+let savedTables = JSON.parse(localStorage.getItem('cc_v2_prawko_tables')||'[]');
+function savePrawko(){ const data = collectTable(); savedTables.unshift(data); localStorage.setItem('cc_v2_prawko_tables',JSON.stringify(savedTables.slice(0,50))); renderSavedTables(); alert('Tabela zapisana'); }
+function collectTable(){ const out = {critical:[],regular:[],allPerformed:true,notes:[],customPlus:[],customMinus:[]}; criticalErrors.forEach(e=>{ const btn = document.querySelector(`.status-btn[data-id="${e.id}"].active`); const status = btn?btn.dataset.val:'brak'; const noteEl = document.getElementById('note-'+e.id); const note = noteEl?noteEl.value.trim():''; out.critical.push({id:e.id,text:e.text,reportText:e.reportText,status,note}); if(status==='nieWykonal' || status==='brak') out.allPerformed=false; if(note) out.notes.push(note); }); regularErrors.forEach(e=>{ const btn = document.querySelector(`.status-btn[data-id="${e.id}"].active`); const status = btn?btn.dataset.val:'brak'; const noteEl = document.getElementById('note-'+e.id); const note = noteEl?noteEl.value.trim():''; out.regular.push({id:e.id,text:e.text,reportText:e.reportText,status,note}); if(status==='nieWykonal' || status==='brak') out.allPerformed=false; if(note) out.notes.push(note); }); document.querySelectorAll('.custom-plus-item').forEach(el=>{ out.customPlus.push(el.innerText.trim()); }); document.querySelectorAll('.custom-minus-item').forEach(el=>{ out.customMinus.push(el.innerText.trim()); }); return out; }
+function renderSavedTables(){ const el = document.getElementById('savedTables'); savedTables = JSON.parse(localStorage.getItem('cc_v2_prawko_tables')||'[]'); el.innerHTML=''; savedTables.forEach((t,i)=>{ const div=document.createElement('div'); div.className='card'; div.style.marginBottom='8px'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div>Tabela ${i+1} - ${t.allPerformed? 'wszystko ok':'niewykonane'}</div><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="loadTable(${i})">Wczytaj</button><button class="btn btn-ghost" onclick="deleteTable(${i})">Usuń</button></div></div>`; el.appendChild(div); }); }
+function loadTable(i){ const t = savedTables[i]; if(!t) return; t.critical.forEach(it=>{ const note = document.getElementById('note-'+it.id); if(note && it.note){ note.value = it.note; note.style.display='inline-block'; } }); t.regular.forEach(it=>{ const note = document.getElementById('note-'+it.id); if(note && it.note){ note.value = it.note; note.style.display='inline-block'; } }); alert('Tabela wczytana'); }
+function deleteTable(i){ if(!confirm('Usuń?')) return; savedTables.splice(i,1); localStorage.setItem('cc_v2_prawko_tables',JSON.stringify(savedTables)); renderSavedTables(); }
+
+// ----------------- Reports -----------------
+let reports = JSON.parse(localStorage.getItem('cc_v2_reports')||'[]');
+function addReport(text){ reports.unshift({text,ts:Date.now()}); localStorage.setItem('cc_v2_reports',JSON.stringify(reports.slice(0,200))); renderReports(); }
+function renderReports(){ reports = JSON.parse(localStorage.getItem('cc_v2_reports')||'[]'); const el = document.getElementById('reportsList'); el.innerHTML=''; if(reports.length===0){ el.innerHTML = '<div class="small-muted">Brak raportów</div>'; return; } reports.forEach((r,i)=> el.insertAdjacentHTML('beforeend', renderReportCardHTML(r.text,i))); }
+function renderReportCardHTML(text,i){ return `<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between"><div style="white-space:pre-wrap;font-family:monospace">${text}</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-ghost" onclick="copyReport(${i})">Kopiuj</button><button class="btn btn-ghost" onclick="deleteReport(${i})">Usuń</button></div></div></div>`; }
+function copyReport(i){ const r = reports[i]; if(!r) return; navigator.clipboard.writeText(r.text).then(()=>alert('Skopiowano raport')); }
+function deleteReport(i){ if(!confirm('Usuń raport?')) return; reports.splice(i,1); localStorage.setItem('cc_v2_reports',JSON.stringify(reports)); renderReports(); }
+
+// ----------------- Attempts storage + helpers table -----------------
+// cc_v2_attempts: { nick: [attempts...] }, attempt: { ts, success, pluses, minuses, reportCritical }
+function getAttemptsStore(){ return JSON.parse(localStorage.getItem('cc_v2_attempts')||'{}'); }
+function saveAttemptsStore(store){ localStorage.setItem('cc_v2_attempts', JSON.stringify(store)); }
+function getAttemptsForNick(nick){ const s = getAttemptsStore(); return (s[nick]||[]); }
+function addAttemptForNick(nick, attempt){ const s = getAttemptsStore(); if(!s[nick]) s[nick]=[]; s[nick].push(attempt); saveAttemptsStore(s); }
+function computeCountsForNick(nick){
+  const attempts = getAttemptsForNick(nick);
+  const successes = attempts.filter(a => a.success).length;
+  const totalFails = attempts.filter(a => !a.success).length;
+  const total = attempts.length;
+  const last = attempts.length? attempts[attempts.length-1] : null;
+  const lastResult = last? (last.success? 'Zaliczone':'Oblane') : '-';
+  return { successes, totalFails, total, lastResult, attempts };
+}
+
+// Render helpers table on dashboard
+function renderHelpersTable(){
+  const body = document.getElementById('helpersTableBody');
+  const store = getAttemptsStore();
+  const nicks = Object.keys(store).sort((a,b)=>a.localeCompare(b));
+  body.innerHTML = '';
+  if(nicks.length===0){ body.innerHTML = '<tr><td colspan="5" class="small-muted">Brak zapisanych prób</td></tr>'; document.getElementById('stat-helpers-count').innerText = '0'; return; }
+  nicks.forEach(nick=>{
+    const c = computeCountsForNick(nick);
+    const rate = c.total===0?0: Math.round((c.successes / c.total) * 100);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="clickable" onclick="openHelperProfile('${escapeHtml(nick)}')">${escapeHtml(nick)}</td>
+                    <td>${c.total}</td>
+                    <td>${c.totalFails}</td>
+                    <td>${rate}%</td>
+                    <td>${escapeHtml(c.lastResult)}</td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById('stat-helpers-count').innerText = nicks.length;
+}
+
+// quick dashboard helper panel actions
+function loadHelperFromInput(){
+  const nick = document.getElementById('dashboard-helper-nick').value.trim();
+  if(!nick) return alert('Podaj nick');
+  openHelperProfile(nick);
+  // switch to helperStats view so user sees full panel
+  showSection('helperStats');
+}
+function renderHelperQuickDisplay(nick){
+  const counts = computeCountsForNick(nick);
+  document.getElementById('h-name').innerText = nick;
+  document.getElementById('h-approach').innerText = `${counts.successes}/${Math.max(5,counts.successes)}`; // keeps format similar
+  document.getElementById('h-fails').innerText = `${counts.totalFails}/2`;
+  document.getElementById('helperStatsDisplay').style.display='block';
+}
+function clearHelperStatsDisplay(){ document.getElementById('dashboard-helper-nick').value=''; document.getElementById('helperStatsDisplay').style.display='none'; }
+
+// generateFromTable (records attempt and creates report)
+function generateFromTable(){
+  const nick = prompt('Podaj nick Helpera:'); if(!nick) return alert('Nick wymagany');
+  const t = collectTable();
+  let werdykt = 'Zaliczone';
+  const reportCritical = [];
+  const plusy = [];
+  const minusy = [];
+  t.critical.forEach(e=>{ if(e.status==='nieWykonal'){ werdykt='Oblane'; reportCritical.push(e.text); }});
+  t.regular.forEach(e=>{ if(e.status==='nieWykonal') minusy.push(e.text + (e.note? ' ('+e.note+')':'')); if(e.status==='wykonal' && e.note) plusy.push(e.note); });
+  if(t.customPlus && t.customPlus.length) plusy.push(...t.customPlus);
+  if(t.customMinus && t.customMinus.length) minusy.push(...t.customMinus);
+  if(t.allPerformed && werdykt==='Zaliczone') plusy.unshift('Perfekcyjne sprawdzanie');
+
+  const success = (werdykt==='Zaliczone');
+  const attemptObj = { ts: Date.now(), success, pluses: plusy.slice(), minuses: minusy.slice(), reportCritical: reportCritical.slice() };
+  addAttemptForNick(nick, attemptObj);
+
+  const counts = computeCountsForNick(nick);
+  const approachStr = `${counts.successes}/5`;
+  const failsStr = `${counts.totalFails}/2`;
+  const plusLines = plusy.length? plusy.map(p=>`- ${p}`).join('\n') : 'Brak';
+  const minusLines = minusy.length? minusy.map(m=>`- ${m}`).join('\n') : 'Brak';
+  const criticalLines = reportCritical.length? reportCritical.map(c=>`- ${c}`).join('\n') : 'Brak';
+
+  const out = `Nick Helpera: @${nick}\nData: ${(new Date()).toISOString().slice(0,10)}\nWerdykt: ${werdykt}\nPodejście: ${approachStr}\nOblane: ${failsStr}\n\nBłędy krytyczne:\n${criticalLines}\n\nPlusy:\n${plusLines}\n\nMinusy:\n${minusLines}`;
+
+  addReport(out);
+  document.getElementById('reportsList').insertAdjacentHTML('afterbegin', renderReportCard(out));
+  showSection('reports');
+  if(document.getElementById('dashboard-helper-nick').value.trim().toLowerCase() === nick.toLowerCase()){
+    renderHelperQuickDisplay(nick);
+  }
+  renderHelpersTable();
+  computeDashboardStats();
+}
+
+// ----------------- Dashboard global stats computation -----------------
+function computeDashboardStats(){
+  try{
+    const reportsLocal = JSON.parse(localStorage.getItem('cc_v2_reports')||'[]');
+    const total = reportsLocal.length;
+    let perfect = 0;
+    let totalErrors = 0;
+    reportsLocal.forEach(r=>{
+      const txt = r.text || r;
+      const plusMatch = txt.match(/Plusy:\n([\s\S]*?)\n\nMinusy:/);
+      if(plusMatch && plusMatch[1] && plusMatch[1].includes('Perfekcyjne sprawdzanie')) perfect++;
+      const critMatch = txt.match(/Błędy krytyczne:\n([\s\S]*?)\n\nPlusy:/);
+      if(critMatch && critMatch[1] && critMatch[1].trim()!=='Brak'){
+        const lines = critMatch[1].trim().split('\n').filter(l=>l.trim());
+        totalErrors += lines.length;
+      }
+      const minusMatch = txt.match(/Minusy:\n([\s\S]*?)$/);
+      if(minusMatch && minusMatch[1] && minusMatch[1].trim()!=='Brak'){
+        const lines = minusMatch[1].trim().split('\n').filter(l=>l.trim());
+        totalErrors += lines.length;
+      }
+    });
+    const avgErrors = total === 0 ? 0 : (totalErrors / total);
+    const elChecks = document.getElementById('stat-checks');
+    const elPerfect = document.getElementById('stat-perfect');
+    const elErrors = document.getElementById('stat-errors');
+    if(elChecks) elChecks.innerText = total;
+    if(elPerfect) elPerfect.innerText = perfect;
+    if(elErrors) elErrors.innerText = avgErrors.toFixed(2);
+  }catch(e){
+    console.error('computeDashboardStats error', e);
+  }
+}
+computeDashboardStats();
+
+// ----------------- Helper Stats page logic -----------------
+function listAllHelperNicks(){ const store = getAttemptsStore(); return Object.keys(store).sort((a,b)=>a.localeCompare(b)); }
+function renderHelperList(){ const container = document.getElementById('helperList'); const q = (document.getElementById('helperSearch')?.value||'').trim().toLowerCase(); const nicks = listAllHelperNicks().filter(n=> n.toLowerCase().includes(q) ); container.innerHTML = ''; if(nicks.length===0){ container.innerHTML = '<div class="small-muted">Brak helperów (brak zapisanych prób)</div>'; return; } nicks.forEach(nick=>{ const counts = computeCountsForNick(nick); const div = document.createElement('div'); div.className='helper-list-item'; div.innerHTML = `<div class="left"><div style="font-weight:700">${escapeHtml(nick)}</div><div class="small-muted" style="font-size:12px">Podejść: ${counts.total} • Oblane: ${counts.totalFails}</div></div><div style="display:flex;gap:8px;align-items:center"><div class="helper-pill">${Math.round((counts.total)===0?0:(counts.successes/Math.max(1,counts.total)*100))}%</div><button class="btn btn-ghost" onclick="openHelperProfile('${escapeHtml(nick)}')">Otwórz</button></div>`; container.appendChild(div); }); }
+function showHelperEmpty(){ document.getElementById('singleHelperStats').classList.add('hidden'); document.getElementById('helperEmpty').style.display='block'; }
+function openHelperProfile(nick){
+  const attempts = getAttemptsForNick(nick).slice().reverse();
+  const total = attempts.length;
+  const successes = attempts.filter(a=>a.success).length;
+  const fails = attempts.filter(a=>!a.success).length;
+  const rate = total===0?0:Math.round((successes/total)*100);
+  document.getElementById('sh-name').innerText = nick;
+  document.getElementById('sh-total').innerText = total;
+  document.getElementById('sh-fails').innerText = fails;
+  document.getElementById('sh-rate').innerText = rate + '%';
+  document.getElementById('sh-meta').innerText = `Zapisane próby: ${total} • Zaliczeń: ${successes} • Oblanych: ${fails}`;
+  const last5 = attempts.slice(0,5);
+  const last5El = document.getElementById('sh-last5'); last5El.innerHTML = '';
+  if(last5.length===0) last5El.innerHTML = '<div class="small-muted">Brak prób</div>';
+  last5.forEach(a=>{
+    const d = new Date(a.ts);
+    const div = document.createElement('div'); div.className='card'; div.style.marginBottom='6px'; div.innerHTML = `<div style="display:flex;justify-content:space-between"><div style="font-weight:700">${a.success? 'Zaliczone':'Oblane'}</div><div class="small-muted">${d.toLocaleString()}</div></div><div style="margin-top:6px">${a.pluses && a.pluses.length? '<div class="small-muted">Plusy:</div><div>' + a.pluses.join(', ') + '</div>':''}${a.minuses && a.minuses.length? '<div class="small-muted">Minusy:</div><div>' + a.minuses.join(', ') + '</div>':''}</div>`; last5El.appendChild(div);
+  });
+  const repContainer = document.getElementById('sh-reportsList'); repContainer.innerHTML = '';
+  const allReports = JSON.parse(localStorage.getItem('cc_v2_reports')||'[]');
+  const filtered = allReports.filter(r=> r.text && r.text.indexOf(`Nick Helpera: @${nick}`)!==-1 ).sort((a,b)=>b.ts - a.ts);
+  if(filtered.length===0){ repContainer.innerHTML = '<div class="small-muted">Brak raportów dla tego helpera.</div>'; }
+  filtered.forEach((r,idx)=>{
+    const div = document.createElement('div'); div.className='report-card'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-family:monospace">${r.text}</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-ghost" onclick="navigator.clipboard.writeText(${JSON.stringify(r.text)}).then(()=>alert('Skopiowano'))">Kopiuj</button></div></div>`; repContainer.appendChild(div);
+  });
+  document.getElementById('singleHelperStats').classList.remove('hidden');
+  document.getElementById('helperEmpty').style.display='none';
+  window._currentOpenedHelper = nick;
+}
+function goBackToHelperList(){ document.getElementById('singleHelperStats').classList.add('hidden'); document.getElementById('helperEmpty').style.display='block'; }
+function exportHelperReportsCSV(){ const nick = window._currentOpenedHelper; if(!nick) return alert('Najpierw wybierz helpera'); const allReports = JSON.parse(localStorage.getItem('cc_v2_reports')||'[]'); const filtered = allReports.filter(r=> r.text && r.text.indexOf(`Nick Helpera: @${nick}`)!==-1 ).sort((a,b)=>b.ts - a.ts); if(filtered.length===0) return alert('Brak raportów do eksportu'); const rows = [['ts','text']]; filtered.forEach(r=> rows.push([r.ts, r.text.replace(/\n/g,' \\n ')])); const csv = rows.map(r=> r.map(c=> `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n'); const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `reports_${nick}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+
+// ----------------- Utilities -----------------
+function escapeHtml(str){ if(!str && str!==0) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+// recompute dashboard & helpers table when storage changes
+window.addEventListener('storage', ()=>{
+  computeDashboardStats();
+  renderHelpersTable();
+  if(currentSection==='helperStats') renderHelperList();
+});
+
+// initial render
+renderPrawkoTable();
+renderSavedTables();
+renderReports();
+renderHistory();
+renderResetList();
+renderWheelList();
+renderHelpersTable();
+computeDashboardStats();
+showHelperEmpty();
+
+</script>
+</body>
+</html>
